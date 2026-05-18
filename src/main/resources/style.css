@@ -1,0 +1,95 @@
+.root {
+    -fx-background-color: #1a1a2e;
+}
+
+.menu-root, .game-root, .winner-root {
+    -fx-background-color: #1a1a2e;
+    -fx-padding: 40;
+}
+
+.title {
+    -fx-font-size: 36px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #e94560;
+}
+
+.subtitle {
+    -fx-font-size: 16px;
+    -fx-text-fill: #eaeaea;
+}
+
+.status {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #eaeaea;
+}
+
+.timer {
+    -fx-font-size: 18px;
+    -fx-text-fill: white;
+}
+
+.winner-text {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0f3460;
+    -fx-background-color: #e94560;
+    -fx-padding: 15 30;
+    -fx-background-radius: 10;
+}
+
+.btn-primary {
+    -fx-background-color: #e94560;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.btn-primary:hover {
+    -fx-background-color: #c73650;
+}
+
+.btn-secondary {
+    -fx-background-color: #16213e;
+    -fx-text-fill: #eaeaea;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 8;
+    -fx-border-color: #e94560;
+    -fx-border-width: 2;
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: #0f3460;
+}
+
+.board {
+    -fx-padding: 10;
+    -fx-background-color: #16213e;
+    -fx-background-radius: 10;
+}
+
+.cell {
+    -fx-pref-width: 100;
+    -fx-pref-height: 100;
+    -fx-font-size: 40px;
+    -fx-font-weight: bold;
+    -fx-background-color: #0f3460;
+    -fx-text-fill: white;
+    -fx-background-radius: 8;
+    -fx-cursor: hand;
+}
+
+.cell:hover {
+    -fx-background-color: #1a4080;
+}
+
+.choice-box {
+    -fx-background-color: #16213e;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+}
