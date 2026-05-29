@@ -200,3 +200,279 @@ O timer no `GameController` usa um `Thread` com loop `while` e `Thread.sleep(100
 - Mensagem de resultado ("Jogador X venceu!", "Empate!", ou "Jogador X venceu! (Tempo esgotado)")
 - Botão "Jogar Novamente" — reinicia o jogo
 - Botão "Voltar ao Menu" — retorna ao menu inicial
+
+---
+
+## Refatoração para Orientação a Objetos
+
+O projeto original implementava toda a lógica de forma **procedural**, com estado global estático e métodos estáticos na classe `GameLogic`. A refatoração reestruturou o código para seguir o paradigma **orientado a objetos**, eliminando completamente o estado global estático e distribuindo responsabilidades entre objetos coesos.
+
+### Nova Estrutura do Projeto
+
+```
+velha-game/
+├── pom.xml
+└── src/main/
+    ├── java/com/velha/
+    │   ├── module-info.java                   # Declaração do módulo Java
+    │   ├── App.java                           # Ponto de entrada — cria instância de Game
+    │   ├── MenuController.java                # Controller do menu — usa App.createGame()
+    │   ├── GameController.java                # Controller do jogo — usa instância de Game e GameTimer
+    │   ├── WinnerController.java              # Controller do vencedor — lê resultado do Game
+    │   ├── model/
+    │   │   ├── Symbol.java                    # Enum: X, O, EMPTY
+    │   │   ├── GameResult.java                # Enum: WIN_X, WIN_O, DRAW, ONGOING
+    │   │   ├── Board.java                     # Encapsula o tabuleiro e verificação de resultado
+    │   │   ├── Player.java                    # Encapsula nome e símbolo do jogador
+    │   │   └── Game.java                      # Orquestrador — compõe Board, Player[], resultado
+    │   ├── timer/
+    │   │   └── GameTimer.java                 # Contagem regressiva com callbacks
+    │   └── util/
+    │       └── SceneManager.java              # Navegação entre cenas JavaFX
+    └── resources/
+        ├── menu.fxml
+        ├── game.fxml
+        ├── winner.fxml
+        └── style.css
+```
+
+### Arquivo Removido
+
+- **`GameLogic.java`** — Toda a lógica procedural centralizada em métodos e variáveis `static` foi eliminada. Seu conteúdo foi distribuído entre objetos de domínio (model).
+
+### Principais Mudanças
+
+#### 1. De variáveis estáticas para objetos com estado encapsulado
+
+**Antes:** Estado global mutável em campos `static` de `GameLogic`:
+
+```java
+private static final char[] board = new char[9];
+private static char currentPlayer = 'X';
+private static boolean gameOver = false;
+private static int timeLimit = 10;
+private static String winnerMessage = "";
+```
+
+**Depois:** Estado encapsulado em instâncias de objetos com acesso controlado por métodos:
+
+```java
+// Board.java — dona do tabuleiro
+private final Symbol[] cells = new Symbol[9];
+
+// Game.java — orquestrador com estado de jogo
+private final Board board;
+private final Player[] players;
+private int currentPlayerIndex;
+private boolean gameOver;
+private GameResult result;
+```
+
+Não existem mais campos `static` mutáveis. Cada instância de `Game` contém seu próprio tabuleiro, seus próprios jogadores e seu próprio estado — sem efeitos colaterais globais.
+
+#### 2. De tipos primitivos para tipos ricos (enums)
+
+**Antes:** Marcadores de jogador como `char` (`'X'`, `'O'`) e posição vazia como `\0`. Resultado do jogo como `String` solta e `boolean` para fim de jogo:
+
+```java
+currentPlayer == 'X' ? 'O' : 'X'    // alternância frágil
+winnerMessage = "Jogador X venceu!";  // string mágica
+```
+
+**Depois:** Tipos enumerados com comportamento embutido:
+
+```java
+public enum Symbol { X, O, EMPTY;          // representa marcação no tabuleiro
+    public Symbol opposite() { ... }        // alternância segura
+}
+
+public enum GameResult { WIN_X, WIN_O, DRAW, ONGOING;
+    public String getMessage() { ... }      // mensagem associada ao resultado
+    public boolean isFinished() { ... }     // verificação sem boolean solto
+}
+```
+
+O tipo `Symbol` elimina a possibilidade de atribuir um caractere inválido ao tabuleiro. O tipo `GameResult` substitui a combinação de `boolean gameOver` + `String winnerMessage` + `char checkWinner()` por um único enum expressivo.
+
+#### 3. De procedimentos estáticos para métodos de instância com responsabilidade única
+
+**Antes:** Toda operação era um método `static` em `GameLogic` que modificava estado global:
+
+| Procedimento | Problema |
+|---|---|
+| `GameLogic.makeMove(pos)` | Operava sobre `static board[]` global |
+| `GameLogic.checkWinner()` | Operava sobre `static board[]` e alterava `static gameOver` |
+| `GameLogic.switchPlayer()` | Alterava `static currentPlayer` |
+| `GameLogic.resetBoard()` | Zerava todo o estado global |
+
+**Depois:** Cada classe tem uma responsabilidade bem definida:
+
+| Classe | Responsabilidade |
+|---|---|
+| `Board` | Gerencia o tabuleiro e verifica resultados (`makeMove`, `checkResult`, `reset`) |
+| `Player` | Encapsula nome e símbolo de um jogador |
+| `Game` | Orquestra jogadores e tabuleiro; coordena turnos e fim de jogo |
+| `GameTimer` | Gerencia a contagem regressiva com callbacks |
+| `SceneManager` | Isola a navegação entre telas JavaFX |
+
+O controller `GameController` já não contém lógica de jogo — apenas coordena a UI e delega para `Game`.
+
+#### 4. De Thread procedural para objeto GameTimer com callbacks
+
+**Antes:** Timer era um bloco procedural dentro de `GameController`, com uma `Thread` anônima que manipulava uma variável `timeRemaining` diretamente e chamava `GameLogic.setGameOver(true)` por efeito colateral:
+
+```java
+private void startTimer() {
+    timeRemaining = GameLogic.getTimeLimit();
+    timerThread = new Thread(() -> {
+        while (timeRemaining > 0 && !GameLogic.isGameOver()) { ... }
+        if (!GameLogic.isGameOver()) {
+            Platform.runLater(this::onTimeUp);
+        }
+    });
+}
+```
+
+**Depois:** `GameTimer` é um objeto independente que recebe _callbacks_ no construtor (`onTick` e `onTimeUp`), desacoplando a contagem regressiva da lógica de jogo e da UI:
+
+```java
+public class GameTimer {
+    private final Consumer<Integer> onTick;
+    private final Runnable onTimeUp;
+
+    public GameTimer(int timeLimit, Consumer<Integer> onTick, Runnable onTimeUp) { ... }
+    public void start()   { ... }  // inicia a thread internamente
+    public void restart() { ... }  // stop + start
+    public void stop()    { ... }  // interrompe a thread
+}
+```
+
+O `GameController` instancia o timer declarativamente:
+
+```java
+timer = new GameTimer(game.getTimeLimit(), this::updateTimerLabel, this::onTimeUp);
+timer.start();
+```
+
+#### 5. De navegação acoplada a App para SceneManager dedicado
+
+**Antes:** A classe `App` concentrava duas responsabilidades: ponto de entrada JavaFX e navegação entre cenas (`loadScene()`):
+
+```java
+public static void loadScene(String name) {
+    Parent root = FXMLLoader.load(...);
+    Scene scene = new Scene(root);
+    scene.getStylesheets().add(...);
+    primaryStage.setScene(scene);
+}
+```
+
+**Depois:** Navegação extraída para `SceneManager`, seguindo o princípio de responsabilidade única. `App` passa a gerenciar apenas o ciclo de vida e a instância de `Game`:
+
+```java
+// App.java — responsabilidade única: ponto de entrada + gerência de Game
+public static Game createGame(int timeLimit) { ... }
+public static Game getGame() { ... }
+
+// SceneManager.java — responsabilidade única: navegação
+public static void loadScene(String name) { ... }
+public static void init(Stage stage) { ... }
+```
+
+#### 6. Comunicação entre telas via instância de Game
+
+**Antes:** Controllers se comunicavam pelo estado global estático de `GameLogic`:
+
+```java
+// MenuController
+GameLogic.setTimeLimit(seconds);
+GameLogic.resetBoard();
+
+// GameController
+GameLogic.makeMove(position);
+GameLogic.switchPlayer();
+
+// WinnerController
+GameLogic.getWinnerMessage();
+```
+
+**Depois:** Controllers compartilham uma mesma instância de `Game` obtida via `App.getGame()`:
+
+```java
+// MenuController
+App.createGame(seconds);         // nova instância de Game
+SceneManager.loadScene("game");
+
+// GameController
+game = App.getGame();             // mesma instância
+game.makeMove(position);          // método de instância
+
+// WinnerController
+game.getWinnerMessage();          // observa resultado
+```
+
+O estado do jogo vive em um objeto `Game`, não em variáveis estáticas. Reiniciar o jogo significa criar uma nova instância, não zerar variáveis globais.
+
+### Fluxo Atualizado de uma Jogada
+
+```
+Jogador clica célula
+  → GameController.onCellClick(position)
+    → game.makeMove(position)               // delega ao objeto Game
+      → board.makeMove(position, symbol)   // Board valida e registra
+      → board.checkResult()                // Board verifica resultado
+      → se acabou: gameOver = true          // Game atualiza estado
+      → senão: switchPlayer()              // Game alterna jogador
+    → atualiza UI com base no estado de game
+    → timer.restart()                      // GameTimer independente
+```
+
+Timer expira:
+```
+GameTimer.onTimeUp callback
+  → game.forfeitDueToTimeout()            // Game calcula vencedor por tempo
+  → SceneManager.loadScene("winner")     // navegação delegada
+```
+
+### Comparação: Antes vs. Depois
+
+| Aspecto | Procedural (antes) | Orientado a Objetos (depois) |
+|---|---|---|
+| **Estado** | Variáveis `static` globais | Instâncias com campos privados |
+| **Tipos** | `char`, `boolean`, `String` soltos | Enums `Symbol`, `GameResult` |
+| **Tabuleiro** | `char[9]` acessado diretamente | Objeto `Board` com encapsulamento |
+| **Jogador** | `char currentPlayer` global | Objeto `Player` com nome e símbolo |
+| **Verificação** | `checkWinner()` + `checkDraw()` separados | `Board.checkResult()` retorna `GameResult` |
+| **Fim de jogo** | `boolean` + `String` desacoplados | `GameResult` enum unifica estado e mensagem |
+| **Timer** | Thread procedural embutida no controller | Objeto `GameTimer` com callbacks |
+| **Navegação** | Método estático em `App` | Classe `SceneManager` dedicada |
+| **Comunicação** | Estado global `GameLogic` | Instância compartilhada de `Game` |
+| **Acoplamento** | Controllers dependem de `GameLogic` diretamente | Controllers dependem de abstrações do domínio |
+
+### Vantagens da Refatoração
+
+1. **Encapsulamento e segurança** — O estado do jogo está protegido dentro de cada objeto. Não é possível corromper o tabuleiro diretamente de fora, nem atribuir um valor inválido a uma célula. A classe `Board` valida jogadas internamente; o tipo `Symbol` impede caracteres inválidos.
+
+2. **Coesão e responsabilidade única** — Cada classe tem uma razão clara para existir: `Board` gerencia o tabuleiro, `Game` orquestra o fluxo, `Player` representa um jogador, `GameTimer` gerencia o tempo. A responsabilidades estão onde faz sentido, não acumuladas em uma única classe de utilidade.
+
+3. **Testabilidade** — As classes de domínio (`Board`, `Game`, `Player`, `Symbol`, `GameResult`) não dependem de JavaFX e podem ser testadas isoladamente com testes unitários. No projeto procedural, testar `GameLogic` exigiria lidar com estado estático mutável, o que torna testes dependentes entre si e sujeitos a efeitos colaterais.
+
+4. **Extensibilidade** — Adicionar novos recursos é mais natural. Por exemplo, para suportar um jogador IA, basta criar uma subclasse de `Player` que implementa a lógica de decisão — sem alterar `Board` ou `Game`. Para adicionar um tabuleiro maior, basta ajustar `Board` e as combinações de vitória, sem tocar na lógica de turno ou UI.
+
+5. **Eliminação de estado global** — Sem `static` mutável, não há risco de estado residual entre partidas ou concorrência acidental. A função `App.createGame()` cria uma instância limpa; o estado anterior é descartado automaticamente pelo garbage collector.
+
+6. **Expressividade** — O código legível comunica intenção. `game.makeMove(position)` é mais claro que `GameLogic.makeMove(position)` seguido de `GameLogic.checkWinner()` e `GameLogic.checkDraw()` e `GameLogic.switchPlayer()`. O fluxo de alto nível está em `Game`; os detalhes de implementação estão onde pertencem.
+
+7. **Composição** — `Game` é composto por `Board` e `Player[]`, não herda de nenhuma superclasse. Isso permite trocar componentes independemente — por exemplo, substituir `GameTimer` por uma implementação baseada em `Timeline` do JavaFX sem alterar `Game`.
+
+### Desvantagens e Trade-offs
+
+1. **Maior número de arquivos** — A refatoração adicionou 6 novos arquivos (`Symbol`, `GameResult`, `Board`, `Player`, `Game`, `GameTimer`) e 1 arquivo utilitário (`SceneManager`) em 3 pacotes novos, contra 1 arquivo `GameLogic` antes. Para um projeto pequeno, isso pode parecer excessivo. A contrapartida é que cada arquivo é curto, tem propósito único e é fácil de localizar.
+
+2. **Indireção adicional** — O caminho de uma jogada agora passa por `GameController` → `Game` → `Board`, em vez de `GameController` → `GameLogic` direto. Para um projeto deste tamanho, a camada extra de indireção pode parecer desnecessária. Ela se justifica quando o projeto cresce e a lógica de negócio não cabe mais em uma única classe.
+
+3. **Instância de Game via App** — Os controllers ainda acessam o `Game` através de `App.getGame()`, que funciona como um ponto global de acesso. Isso não é injeção de dependência pura (os controllers não recebem `Game` no construtor). Uma abordagem mais ortodoxa seria usar um framework de DI ou passar o `Game` como parâmetro ao carregar a cena, mas isso adicionaria complexidade que não se justifica neste escopo.
+
+4. **GameTimer ainda usa Thread** — Embora o timer tenha sido extraído para uma classe própria com callbacks, a implementação interna ainda usa `Thread.sleep(1000)` em vez de `Timeline` ou `AnimationTimer` do JavaFX. A refatoração melhorou o encapsulamento, mas não trocou a abordagem de temporização. Uma evolução natural seria substituir por `Timeline`, que é nativa do framework e dispensa o `Platform.runLater()` manual.
+
+5. **Static em SceneManager** — `SceneManager` e `App` ainda usam métodos estáticos para navegação e acesso ao `Game`. Isso é uma herança do padrão JavaFX (o `start(Stage)` é invocado pelo framework), e não há uma forma simples de evitar isso sem um framework de DI. Funciona como um service locator mínimo — aceitável no contexto de um projeto JavaFX pequeno.

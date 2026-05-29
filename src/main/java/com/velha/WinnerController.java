@@ -1,5 +1,7 @@
 package com.velha;
 
+import com.velha.model.Game;
+import com.velha.util.SceneManager;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 
@@ -10,17 +12,18 @@ public class WinnerController {
 
     @FXML
     public void initialize() {
-        winnerLabel.setText(GameLogic.getWinnerMessage());
+        Game game = App.getGame();
+        winnerLabel.setText(game.getWinnerMessage());
     }
 
     @FXML
     public void onPlayAgain() {
-        GameLogic.resetBoard();
-        App.loadScene("game");
+        App.createGame(App.getGame().getTimeLimit());
+        SceneManager.loadScene("game");
     }
 
     @FXML
     public void onBackToMenu() {
-        App.loadScene("menu");
+        SceneManager.loadScene("menu");
     }
 }

@@ -1,6 +1,12 @@
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/model/GameResult.java
 /home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/MenuController.java
 /home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/App.java
-/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/GameLogic.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/model/Board.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/util/SceneManager.java
 /home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/WinnerController.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/model/Symbol.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/model/Player.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/timer/GameTimer.java
 /home/mleal/Area de trabalho/velha-game/src/main/java/module-info.java
+/home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/model/Game.java
 /home/mleal/Area de trabalho/velha-game/src/main/java/com/velha/GameController.java

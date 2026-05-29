@@ -1,6 +1,5 @@
-com/velha/WinnerController.class
-com/velha/GameLogic.class
-module-info.class
 com/velha/MenuController.class
+com/velha/WinnerController.class
+module-info.class
 com/velha/GameController.class
 com/velha/App.class

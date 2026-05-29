@@ -1,6 +1,9 @@
 package com.velha;
 
-import javafx.application.Platform;
+import com.velha.model.Game;
+import com.velha.model.Symbol;
+import com.velha.timer.GameTimer;
+import com.velha.util.SceneManager;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -17,15 +20,16 @@ public class GameController {
     @FXML
     private Label timerLabel;
 
-    private Button[] cells = new Button[9];
-    private int timeRemaining;
-    private Thread timerThread;
+    private final Button[] cells = new Button[9];
+    private Game game;
+    private GameTimer timer;
 
     @FXML
     public void initialize() {
+        game = App.getGame();
         buildBoard();
-        startTimer();
         updateStatusLabel();
+        startTimer();
     }
 
     private void buildBoard() {
@@ -42,66 +46,39 @@ public class GameController {
     }
 
     private void onCellClick(int position) {
-        if (GameLogic.isGameOver()) return;
-        if (!GameLogic.makeMove(position)) return;
+        if (game.isGameOver()) return;
 
-        cells[position].setText(String.valueOf(GameLogic.getCurrentPlayer()));
+        Symbol previousSymbol = game.getCurrentPlayer().getSymbol();
+        if (!game.makeMove(position)) return;
 
-        char winner = GameLogic.checkWinner();
-        boolean draw = GameLogic.checkDraw();
+        cells[position].setText(previousSymbol.toString());
 
-        if (winner != '\0' || draw) {
+        if (game.isGameOver()) {
             stopTimer();
-            GameLogic.setGameOver(true);
-            App.loadScene("winner");
+            SceneManager.loadScene("winner");
             return;
         }
 
-        GameLogic.switchPlayer();
         updateStatusLabel();
-        restartTimer();
+        timer.restart();
     }
 
     private void updateStatusLabel() {
-        statusLabel.setText("Vez do jogador: " + GameLogic.getCurrentPlayer());
+        statusLabel.setText("Vez do jogador: " + game.getCurrentPlayer().getDisplayName());
     }
 
     private void startTimer() {
-        timeRemaining = GameLogic.getTimeLimit();
-        updateTimerLabel();
-
-        timerThread = new Thread(() -> {
-            while (timeRemaining > 0 && !GameLogic.isGameOver()) {
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    return;
-                }
-                timeRemaining--;
-                Platform.runLater(this::updateTimerLabel);
-            }
-            if (!GameLogic.isGameOver()) {
-                Platform.runLater(this::onTimeUp);
-            }
-        });
-        timerThread.setDaemon(true);
-        timerThread.start();
+        timer = new GameTimer(
+            game.getTimeLimit(),
+            this::updateTimerLabel,
+            this::onTimeUp
+        );
+        timer.start();
     }
 
-    private void restartTimer() {
-        stopTimer();
-        startTimer();
-    }
-
-    private void stopTimer() {
-        if (timerThread != null && timerThread.isAlive()) {
-            timerThread.interrupt();
-        }
-    }
-
-    private void updateTimerLabel() {
-        timerLabel.setText("Tempo: " + timeRemaining + "s");
-        if (timeRemaining <= 3) {
+    private void updateTimerLabel(int seconds) {
+        timerLabel.setText("Tempo: " + seconds + "s");
+        if (seconds <= 3) {
             timerLabel.setStyle("-fx-text-fill: red; -fx-font-size: 18px;");
         } else {
             timerLabel.setStyle("-fx-text-fill: white; -fx-font-size: 18px;");
@@ -109,9 +86,13 @@ public class GameController {
     }
 
     private void onTimeUp() {
-        GameLogic.setGameOver(true);
-        GameLogic.switchPlayer();
-        GameLogic.setWinnerMessage("Jogador " + GameLogic.getCurrentPlayer() + " venceu! (Tempo esgotado)");
-        App.loadScene("winner");
+        game.forfeitDueToTimeout();
+        SceneManager.loadScene("winner");
+    }
+
+    private void stopTimer() {
+        if (timer != null) {
+            timer.stop();
+        }
     }
 }
