@@ -1,0 +1,27 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{ADB35333-6B88-44FD-86A6-7838F536849A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "VelhaGame.App", "src\VelhaGame.App\VelhaGame.App.fsproj", "{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{53D588A1-45AF-4FC6-A83C-0D1806D0AFF6} = {ADB35333-6B88-44FD-86A6-7838F536849A}
+	EndGlobalSection
+EndGlobal
